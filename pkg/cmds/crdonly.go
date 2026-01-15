@@ -35,6 +35,7 @@ func NewCmdGenerateCRDOnlyChart() *cobra.Command {
 	var (
 		input  string
 		output string
+		semver = true
 	)
 	cmd := &cobra.Command{
 		Use:                   "crd-only",
@@ -130,6 +131,10 @@ func NewCmdGenerateCRDOnlyChart() *cobra.Command {
 				},
 				Files: allFiles,
 			}
+			renameChart(newChart, newChartName)
+			if semver {
+				newChart.Metadata.Version = strings.TrimPrefix(ch.Metadata.Version, "v")
+			}
 
 			// Save to output directory
 			if err := chartutil.SaveDir(newChart, output); err != nil {
@@ -142,8 +147,9 @@ func NewCmdGenerateCRDOnlyChart() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&input, "input", "/Users/tamal/go/src/kubedb.dev/installer/charts/kubedb", "Path to the input Helm chart directory or .tgz file")
-	cmd.Flags().StringVar(&output, "output", "/Users/tamal/go/src/kubedb.dev/fg/repack", "Output directory for the repackaged CRDs-only chart")
+	cmd.Flags().StringVar(&input, "input", "", "Path to the input Helm chart directory or .tgz file")
+	cmd.Flags().StringVar(&output, "output", "", "Output directory for the repackaged CRDs-only chart")
+	cmd.Flags().BoolVar(&semver, "semver", semver, "If true, use strict semver version (no v prefix)")
 	_ = cobra.MarkFlagRequired(cmd.Flags(), "input")
 	_ = cobra.MarkFlagRequired(cmd.Flags(), "output")
 
@@ -207,4 +213,12 @@ func modifyDocYaml(data []byte, newChartName string) ([]byte, error) {
 		return nil, err
 	}
 	return yaml.Marshal(content)
+}
+
+func renameChart(ch *chart.Chart, newChartName string) {
+	ch.Metadata.Name = newChartName
+	_, ok := ch.Metadata.Annotations["charts.openshift.io/name"]
+	if ok {
+		ch.Metadata.Annotations["charts.openshift.io/name"] = newChartName
+	}
 }

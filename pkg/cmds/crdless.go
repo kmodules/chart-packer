@@ -28,8 +28,11 @@ import (
 )
 
 func NewCmdGenerateCRDLessChart() *cobra.Command {
-	var input string
-	var output string
+	var (
+		input  string
+		output string
+		semver = true
+	)
 	cmd := &cobra.Command{
 		Use:                   "crd-less",
 		Short:                 "Generate crd less chart",
@@ -47,7 +50,10 @@ func NewCmdGenerateCRDLessChart() *cobra.Command {
 			// Remove CRDs from the main chart and recursively from dependencies
 			removeCRDsFromChart(ch)
 
-			ch.Metadata.Name = newChartName
+			renameChart(ch, newChartName)
+			if semver {
+				ch.Metadata.Version = strings.TrimPrefix(ch.Metadata.Version, "v")
+			}
 
 			for _, f := range ch.Files {
 				if f.Name == "doc.yaml" {
@@ -69,8 +75,9 @@ func NewCmdGenerateCRDLessChart() *cobra.Command {
 		},
 	}
 
-	cmd.Flags().StringVar(&input, "input", "/Users/tamal/go/src/kubedb.dev/installer/charts/kubedb", "input helm chart tgz file")
-	cmd.Flags().StringVar(&output, "output", "/Users/tamal/go/src/kubedb.dev/fg/repack", "output helm chart tgz file without CRDs")
+	cmd.Flags().StringVar(&input, "input", "", "input helm chart tgz file")
+	cmd.Flags().StringVar(&output, "output", "", "output helm chart tgz file without CRDs")
+	cmd.Flags().BoolVar(&semver, "semver", semver, "If true, use strict semver version (no v prefix)")
 	_ = cobra.MarkFlagRequired(cmd.Flags(), "input")
 	_ = cobra.MarkFlagRequired(cmd.Flags(), "output")
 
