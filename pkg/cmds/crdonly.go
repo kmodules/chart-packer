@@ -19,6 +19,7 @@ package cmds
 import (
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -65,10 +66,21 @@ func NewCmdGenerateCRDOnlyChart() *cobra.Command {
 				}
 			}
 
-			// Convert to slice
-			var crdFiles []*chart.File
-			for _, file := range crdMap {
-				crdFiles = append(crdFiles, file)
+			// Convert to slice in a deterministic order (sorted by group then kind)
+			// so repeated runs over the same input always produce identical output.
+			crdKeys := make([]schema.GroupKind, 0, len(crdMap))
+			for key := range crdMap {
+				crdKeys = append(crdKeys, key)
+			}
+			sort.Slice(crdKeys, func(i, j int) bool {
+				if crdKeys[i].Group != crdKeys[j].Group {
+					return crdKeys[i].Group < crdKeys[j].Group
+				}
+				return crdKeys[i].Kind < crdKeys[j].Kind
+			})
+			crdFiles := make([]*chart.File, 0, len(crdMap))
+			for _, key := range crdKeys {
+				crdFiles = append(crdFiles, crdMap[key])
 			}
 
 			var extraFiles []*chart.File
